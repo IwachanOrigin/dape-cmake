@@ -39,6 +39,11 @@ If nil, returns the first executable found in the search directory."
   :type '(choice (const :tag "auto-detection" nil) string)
   :group 'cmake-find-exec)
 
+(defcustom cmake-build-config "Debug"
+  ""
+  :type 'string
+  :group 'cmake-find-exec)
+
 (defun cmake--exec-search-pattern ()
   "A regular expression that returns the executable file extension according to the operating system."
   (if (eq system-type 'windows-nt)
@@ -50,7 +55,7 @@ If nil, returns the first executable found in the search directory."
   "Get the full path to the build-generated executable based on BUFFER-FILE (or current buffer if omitted).
  If not found, nil."
   (interactive)
-  (let* ((root (myfind-topmost-cmake-dir buffer-file)))
+  (let* ((root (cmake-utils-find-topmost-cmake-file-dir buffer-file)))
     (unless root
       (user-error "Top level CMakeLists.txt not found."))
     ;; ------------------------------------------------------------
@@ -74,24 +79,25 @@ If nil, returns the first executable found in the search directory."
       ;; ----------------------------------------------------------
       ;; Preferred if explicit target name
       ;; ----------------------------------------------------------
-      (when cmake-exec-target-name
-        (dolist (dir search-dirs)
-          (let* ((exe (if (eq system-type 'windows-nt)
-                          (concat cmake-exec-target-name ".exe")
-                        cmake-exec-target-name))
-                 (path (expand-file-name exe dir)))
-            (when (file-exists-p path)
-              (setq target path)
-              (cl-return)))))
-      ;; Auto detection
-      (unless target
-        (dolist (dir search-dirs)
-          (setq target
-                (cl-loop for f in (directory-files dir t pattern)
-                         when (and (file-executable-p f)
-                                   (not (file-directory-p f)))
-                         return f))
-          (when target (cl-return))))
+      (setq target
+            (or
+             ;; Preferred if explicit target name
+             (when cmake-exec-target-name
+               (cl-some (lambda (dir)
+                          (let* ((exe (if (eq system-type 'windows-nt)
+                                          (concat cmake-exec-target-name ".exe")
+                                        cmake-exec-target-name))
+                                 (path (expand-file-name exe dir)))
+                            (when (file-exists-p path) path)))
+                        search-dirs))
+             ;; Auto-detection
+             (cl-some (lambda (dir)
+                        (cl-some (lambda (f)
+                                   (when (and (file-executable-p f)
+                                              (not (file-directory-p f)))
+                                     f))
+                                 (directory-files dir t pattern)))
+                      search-dirs)))
       ;; ----------------------------------------------------------
       ;; Return & Interactive Display
       ;; ----------------------------------------------------------

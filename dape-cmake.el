@@ -1,89 +1,66 @@
-;;; dape-cmake.el --- CMake で出来た実行ファイルを dape + lldb-dap ですぐデバッグ -*- lexical-binding: t; -*-
+;;; dape-cmake.el --- Debug an executable generated with CMake using dape + lldb-dap. -*- lexical-binding: t; -*-
 
-;; ❶ 事前条件 ─────────────────────────────────────────────────────────
-;;   * myfind-topmost-cmake-dir / cmake-build-directory / cmake-build-config
-;;     cmake-find-built-executable がすでに動く
-;;   * LLVM/bin が PATH にあり lldb-vscode か lldb-dap が呼び出せる
-;;   * MELPA などからパッケージ dape をインストールずみ
-;;
-;; ❷ 目的 ───────────────────────────────────────────────────────────
-;;   - M-x dape-cmake-debug で
-;;       ① ビルド生成バイナリを自動検出
-;;       ② lldb-dap を選択済みの dape セッションを即起動
-;;   - 手動で毎回 :program や :cwd を入力する手間を無くす
-;;
-;; ❸ 使い方 ─────────────────────────────────────────────────────────
+;; Copyright (C) 2025 Yuji Iwanaga
+
+;; Author: Yuji Iwanaga <nm7.ty.nt.abc@gmail.com>
+;; URL: https://github.com/IwachanOrigin/dape-cmake
+;; Version: 1.0.0
+
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; How to Use
 ;;   (require 'dape-cmake)           ; init.el などに追記
 ;;   C/C++ バッファで
-;;     M-x cmake-build        （←必要なら）
 ;;     M-x dape-cmake-debug   （←デバッグ開始）
 ;;
 ;;   通常の dape キーバインド例:
 ;;     b : ブレークポイント、c : 続行、n : step-over、i : step-into、q : 終了
 ;;
-;; ❹ 参考: https://github.com/svaante/dape
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(require 'dape)           ; dape 本体
+;;; Code:
+
+(require 'dape)
 (require 'cl-lib)
 
-;;------------------------------------------------------------
-;; 1) lldb アダプタのパスを任意で上書きしたい場合
-;;    dape は既定で 'lldb' アダプタを組み込んでいるため、
-;;    PATH に lldb-vscode があればこの節は不要です。
-;;
-;; (add-to-list
-;;  'dape-adapters
-;;  '(lldb-custom
-;;    :command "/opt/llvm/bin/lldb-vscode"  ; 独自パス
-;;    :temp    yes))                        ; Windows なら拡張子 .exe を付与
-;;------------------------------------------------------------
-
-(defcustom dape-lldb-command "lldb-dap"
-  "PATH から取得する lldb debug adapter 実行ファイル名
-Windows の場合は \"lldb-dap.exe\" などに合わせる"
-  :type 'string  :group 'dape)
-
-(defun dape--cmake-build-file (&optional buffer-file)
-  "現在 (または BUFFER-FILE) を基準に、ビルド済み実行ファイルを返す。
-見つからなければエラーを投げる。"
-  (or (cmake-find-built-executable buffer-file)
-      (user-error "ビルド済み実行ファイルが見つかりません。先に M-x cmake-build してください。")))
-
 ;;;###autoload
-;;(defun dape-cmake-debug (&optional buffer-file)
-;;  "cmake で生成した実行ファイルを lldb-dap でデバッグ。"
-;;  (interactive)
-;;  (let* ((exe (dape--cmake-build-file buffer-file))
-;;         (config `(:name    "CMake-LLDB"
-;;                            :type    "lldb"
-;;                            :request "launch"
-;;                            :command dape-lldb-command
-;;                            :program exe
-;;                            :cwd     (file-name-directory exe)
-;;                            :stopOnEntry :json-false)))
-;;    ;; dape は (dape CONFIG) の形で直接起動可能
-;;    (dape config)))
-
 (defun dape-cmake-debug (&optional buffer-file)
-  "BUFFER-FILE (省略時は現在バッファ) を基点に
-CMake が作った実行ファイルを lldb-dap でデバッグ起動する。"
+  "Use BUFFER-FILE (defaults to the current buffer) as the base and start debugging the executable created by CMake with lldb-dap."
   (interactive)
+  ;; 1) Find the builded cmake executable file.
   (let* ((exe (cmake-find-built-executable buffer-file)))
     (unless exe
-      (user-error "ビルド済み実行ファイルが見つかりません。まず M-x cmake-build"))
-    ;; ① 既定の lldb-dap 設定をコピー
-    (let* ((base   (copy-tree (alist-get 'lldb-dap dape-configs))) ;← built-in
-           ;; ② PLIST を書き換え
+      (user-error "No built executable found. Please run M-x cmake-build-debug first."))
+    ;; 2) Copy the default lldb-dap settings.
+    ;;    dape-configs is a defcustom value inside dape.el.
+    (let* ((base (copy-tree (alist-get 'lldb-dap dape-configs)))
+           ;; 3) Ensure that `command-cwd` is set to a "string".
+           ;; Normally, just before dape starts, `command-cwd` is evaluated and replaced with a string path.
+           ;; But because the config is passed directly to dape, that replacement isn’t performed.
+           ;; To avoid this, `funcall` is used to run and evaluate `dape-command-cwd`.
+           (base (plist-put base
+                            'command-cwd
+                            (funcall (plist-get base 'command-cwd))))
+           ;; 4) Modify the PLIST.
            (config (thread-first base
-                     (plist-put :name "CMake-LLDB")
-                     (plist-put :program exe)
-                     (plist-put :cwd (file-name-directory exe)))))
-      (dape config))))                 ; ③ 起動！
-
-                                        ;(with-eval-after-load 'cc-mode
-                                        ;  ;; C-c d でワンキー起動（任意）
-                                        ;  (define-key c-mode-base-map (kbd "C-c d") #'dape-cmake-debug))
+                                 (plist-put :name "CMake-LLDB")
+                                 (plist-put :program exe)
+                                 (plist-put :cwd (file-name-directory exe)))))
+      (message "modify config : %S" config)
+      ;; 5) run.
+      (dape config))))
 
 (provide 'dape-cmake)
 ;;; dape-cmake.el ends here

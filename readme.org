@@ -1,0 +1,25 @@
+
+* dape-cmake
+
+** Introduction
+Debug an executable generated with CMake using dape + lldb-dap.  
+
+** Dependency
+- cmake-build  
+  (https://github.com/IwachanOrigin/cmake-build)[https://github.com/IwachanOrigin/cmake-build]  
+
+** Install
+#+begin_src emacs-lisp
+  (use-package dape-cmake
+    :vc (:fetcher github :repo IwachanOrigin/dape-cmake))
+#+end_src
+
+** How to use
+1) Open a C++ implementation file or header file.  
+2) M-x cmake-configure RET  
+   Temporary build artifacts will be generated in the build folder.  
+3) M-x cmake-build-debug or cmake-build-release RET  
+   The build is executed, and an executable file is generated.  
+4) M-x dape-cmake-debug RET  
+   Start the debug process.  
+

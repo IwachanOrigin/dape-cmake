@@ -22,7 +22,13 @@
 ;;; Commentary:
 
 ;; How to Use
-;;
+;; Called cmake-find-built-executable,
+;; the following processing is performed starting from the file in the current buffer.
+;;   1) Get the top level CMakeLists.txt directory path.
+;;   2) Generate four directory paths, check for their existence, and remove any that are not found from the list.
+;;   3) If `cmake-exec-target-name` is set, search using that target name first.
+;;      If it is not set, run the auto-detection feature to locate the executable.
+;;   4) Return the obtained executable file path. If called from interactive mode, display the executable file path first.
 
 ;;; Code:
 
@@ -40,7 +46,7 @@ If nil, returns the first executable found in the search directory."
   :group 'cmake-find-exec)
 
 (defcustom cmake-build-config "Debug"
-  ""
+  "The string corresponding to the <CONFIG> section."
   :type 'string
   :group 'cmake-find-exec)
 

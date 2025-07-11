@@ -23,3 +23,11 @@ Debug an executable generated with CMake using dape + lldb-dap.
 4) M-x dape-cmake-debug RET  
    Start the debug process.  
 
+** Custom Value
+
+*** cmake-find-exec
+| custom value           | default value | description                                           |
+|------------------------+---------------+-------------------------------------------------------|
+| cmake-exec-target-name | nil           | Name of the main executable file (without extension). |
+| cmake-build-config     | Debug         | The string corresponding to the <CONFIG> section.     |
+

@@ -22,13 +22,9 @@
 ;;; Commentary:
 
 ;; How to Use
-;;   (require 'dape-cmake)           ; init.el などに追記
-;;   C/C++ バッファで
-;;     M-x dape-cmake-debug   （←デバッグ開始）
-;;
-;;   通常の dape キーバインド例:
-;;     b : ブレークポイント、c : 続行、n : step-over、i : step-into、q : 終了
-;;
+;; Running M-x dape-cmake-debug starts the debugging session.
+;; Other operations are the same as in dape.
+;; When performing a debug run, it is recommended to use it in combination with Repeat-mode.
 
 ;;; Code:
 

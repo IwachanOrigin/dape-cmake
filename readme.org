@@ -20,8 +20,7 @@ Debug an executable generated with CMake using dape + lldb-dap.
 3) M-x ~cmake-build-debug~ or ~cmake-build-release~ RET. \\
    The build is executed, and an executable file is generated.
 4) M-x ~dape-cmake-debug~ RET. \\
-   Start the debug process. \\
-   OK.
+   Start the debug process.
 
 * Custom Value
 ** cmake-find-exec

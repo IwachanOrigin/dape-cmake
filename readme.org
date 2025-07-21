@@ -22,10 +22,16 @@ Debug an executable generated with CMake using dape + lldb-dap.
 4) M-x ~dape-cmake-debug~ RET. \\
    Start the debug process.
 
+* Optional
+To set arguments, run M-x ~dape-cmake-set-args~ and configure them via the prompt.
+A .dape-args file will be created in the project root (i.e., the directory containing the top-level CMakeLists.txt).
+If a .dape-args file already exists, it will be parsed and the arguments will be loaded automatically.
+
 * Custom Value
 ** cmake-find-exec
-| custom value           | default value | description                                           |
-|------------------------+---------------+-------------------------------------------------------|
-| cmake-exec-target-name | nil           | Name of the main executable file (without extension). |
-| cmake-build-config     | Debug         | The string corresponding to the <CONFIG> section.     |
+| custom value         | default value | description                                                                  |
+|----------------------+---------------+------------------------------------------------------------------------------|
+| dape-cmake-args-file | .dape-args    | The name of the file that saves debug arguments, placed in the project root. |
+|                      |               |                                                                              |
+
 
